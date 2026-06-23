@@ -108,14 +108,15 @@ action:
   - variables:
       entities_raw: !input entities_notification
       entities_list: "{{ entities_raw if entities_raw is list else [entities_raw] }}"
-      device_ids: "{{ entities_list | map('device_id') | unique | list }}"
-      titre: "{% if trigger.id == 'ouvrir' %}{{ titre_ouvrir }}{% else %}{{ titre_fermer }}{% endif %}"
-      message: "{% if trigger.id == 'ouvrir' %}{{ message_ouvrir }}{% else %}{{ message_fermer }}{% endif %}"
+      device_ids: "{{ entities_list | map('device_id') | select('string') | unique | list }}"
+      trigger_id: "{{ trigger.id | default('') }}"
+      titre: "{% if trigger_id == 'ouvrir' %}{{ titre_ouvrir }}{% else %}{{ titre_fermer }}{% endif %}"
+      message: "{% if trigger_id == 'ouvrir' %}{{ message_ouvrir }}{% else %}{{ message_fermer }}{% endif %}"
   - if:
       - condition: template
         value_template: "{{ boolean_fenetres != '' }}"
     then:
-      - service: "input_boolean.turn_{{ 'on' if trigger.id == 'ouvrir' else 'off' }}"
+      - service: "input_boolean.turn_{{ 'on' if trigger_id == 'ouvrir' else 'off' }}"
         target:
           entity_id: "{{ boolean_fenetres }}"
   - repeat:
