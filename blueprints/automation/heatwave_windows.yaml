@@ -22,16 +22,18 @@ blueprint:
         entity:
           multiple: true
           device_class: temperature
-    services_notification:
-      name: Service(s) de notification / Notification service(s)
+    entities_notification:
+      name: Appareils à notifier / Devices to notify
       description: >
-        Service(s) de notification séparés par des virgules.
-        Ex : notify.mobile_app_pixel_7, notify.mobile_app_iphone_de_marie
+        Sélectionne une entité de chaque appareil mobile à notifier (ex: capteur de batterie du téléphone).
+        Le service notify correspondant est dérivé automatiquement.
 
-        Comma-separated notification services.
-        E.g.: notify.mobile_app_pixel_7, notify.mobile_app_iphone_de_marie
+        Select one entity per mobile device to notify (e.g. phone battery sensor).
+        The corresponding notify service is derived automatically.
       selector:
-        text:
+        entity:
+          integration: mobile_app
+          multiple: true
     delai_minutes:
       name: Délai / Delay (minutes)
       default: 10
@@ -93,33 +95,22 @@ action:
   - variables:
       langue: !input langue
       boolean_fenetres: !input boolean_fenetres
-      temps_ext: >
-        {{ expand(capteurs_exterieurs) | map(attribute='state') | map('float', none) | reject('none') | list }}
-      temps_int: >
-        {{ expand(capteurs_interieurs) | map(attribute='state') | map('float', none) | reject('none') | list }}
-      temp_max_ext: "{{ temps_ext | max | round(1) }}"
-      temp_min_int: "{{ temps_int | min | round(1) }}"
+      temp_max_ext: >
+        {% set vals = expand(capteurs_exterieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
+        {{ vals | max | round(1) if vals | length > 0 else '?' }}
+      temp_min_int: >
+        {% set vals = expand(capteurs_interieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
+        {{ vals | min | round(1) if vals | length > 0 else '?' }}
       titre_ouvrir: "{% if langue == 'fr' %}🪟 Ouvrez les fenêtres !{% else %}🪟 Open the windows!{% endif %}"
-      message_ouvrir: >
-        {% if langue == 'fr' %}
-          Il fait plus frais dehors (max {{ temp_max_ext }}°C) que dedans (min {{ temp_min_int }}°C). C'est le moment de ventiler !
-        {% else %}
-          It's cooler outside (max {{ temp_max_ext }}°C) than inside (min {{ temp_min_int }}°C). Time to ventilate!
-        {% endif %}
+      message_ouvrir: "{% if langue == 'fr' %}Il fait plus frais dehors (max {{ temp_max_ext }}°C) que dedans (min {{ temp_min_int }}°C). C'est le moment de ventiler !{% else %}It's cooler outside (max {{ temp_max_ext }}°C) than inside (min {{ temp_min_int }}°C). Time to ventilate!{% endif %}"
       titre_fermer: "{% if langue == 'fr' %}🪟 Fermez les fenêtres !{% else %}🪟 Close the windows!{% endif %}"
-      message_fermer: >
-        {% if langue == 'fr' %}
-          Il fait plus chaud dehors (max {{ temp_max_ext }}°C) que dedans (min {{ temp_min_int }}°C). Fermez pour garder la fraîcheur !
-        {% else %}
-          It's warmer outside (max {{ temp_max_ext }}°C) than inside (min {{ temp_min_int }}°C). Close to keep the cool air in!
-        {% endif %}
+      message_fermer: "{% if langue == 'fr' %}Il fait plus chaud dehors (max {{ temp_max_ext }}°C) que dedans (min {{ temp_min_int }}°C). Fermez pour garder la fraîcheur !{% else %}It's warmer outside (max {{ temp_max_ext }}°C) than inside (min {{ temp_min_int }}°C). Close to keep the cool air in!{% endif %}"
   - variables:
-      services_raw: !input services_notification
-      services: "{{ services_raw.split(',') | map('trim') | list }}"
-      titre: >
-        {% if trigger.id == 'ouvrir' %}{{ titre_ouvrir }}{% else %}{{ titre_fermer }}{% endif %}
-      message: >
-        {% if trigger.id == 'ouvrir' %}{{ message_ouvrir }}{% else %}{{ message_fermer }}{% endif %}
+      entities_raw: !input entities_notification
+      entities_list: "{{ entities_raw if entities_raw is list else [entities_raw] }}"
+      device_ids: "{{ entities_list | map('device_id') | unique | list }}"
+      titre: "{% if trigger.id == 'ouvrir' %}{{ titre_ouvrir }}{% else %}{{ titre_fermer }}{% endif %}"
+      message: "{% if trigger.id == 'ouvrir' %}{{ message_ouvrir }}{% else %}{{ message_fermer }}{% endif %}"
   - if:
       - condition: template
         value_template: "{{ boolean_fenetres != '' }}"
@@ -128,9 +119,9 @@ action:
         target:
           entity_id: "{{ boolean_fenetres }}"
   - repeat:
-      for_each: "{{ services }}"
+      for_each: "{{ device_ids }}"
       sequence:
-        - service: "{{ repeat.item }}"
+        - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
           data:
             title: "{{ titre }}"
             message: "{{ message }}"
