@@ -22,18 +22,15 @@ blueprint:
         entity:
           multiple: true
           device_class: temperature
-    services_notification:
-      name: Service(s) de notification / Notification service(s)
+    devices_notification:
+      name: Appareils à notifier / Devices to notify
       description: >
-        Service(s) notify séparés par des virgules. Trouve les noms disponibles dans
-        Outils de développement → Services → filtre "notify.mobile_app_".
-        Ex : notify.mobile_app_pixel_7, notify.mobile_app_iphone
-
-        Comma-separated notify services. Find available names in
-        Developer Tools → Services → filter "notify.mobile_app_".
-        E.g.: notify.mobile_app_pixel_7, notify.mobile_app_iphone
+        Sélectionne un ou plusieurs appareils mobiles (companion app HA).
+        Select one or more mobile devices (HA companion app).
       selector:
-        text:
+        device:
+          integration: mobile_app
+          multiple: true
     delai_minutes:
       name: Délai / Delay (minutes)
       default: 10
@@ -84,7 +81,7 @@ action:
       capteurs_ext: !input capteurs_exterieurs
       capteurs_int: !input capteurs_interieurs
       langue: !input langue
-      services_raw: !input services_notification
+      devices_raw: !input devices_notification
   - variables:
       temp_max_ext: >
         {% set vals = expand(capteurs_ext) | map(attribute='state') | map('float', none) | reject('none') | list %}
@@ -92,10 +89,10 @@ action:
       temp_min_int: >
         {% set vals = expand(capteurs_int) | map(attribute='state') | map('float', none) | reject('none') | list %}
         {{ vals | min | round(1) if vals | length > 0 else '?' }}
-      services_list: "{{ services_raw.split(',') | map('trim') | list }}"
+      devices_list: "{{ devices_raw if devices_raw is list else [devices_raw] }}"
       trigger_id: "{{ trigger.id | default('') }}"
   - variables:
-      services: "{{ services_list }}"
+      device_ids: "{{ devices_list | select('string') | unique | list }}"
       titre: >
         {% if trigger_id == 'ouvrir' %}
           {% if langue == 'fr' %}🪟 Ouvrez les fenêtres !{% else %}🪟 Open the windows!{% endif %}
@@ -109,9 +106,9 @@ action:
           {% if langue == 'fr' %}Il fait plus chaud dehors (max {{ temp_max_ext }}°C) que dedans (min {{ temp_min_int }}°C). Fermez pour garder la fraîcheur !{% else %}It's warmer outside (max {{ temp_max_ext }}°C) than inside (min {{ temp_min_int }}°C). Close to keep the cool air in!{% endif %}
         {% endif %}
   - repeat:
-      for_each: "{{ services }}"
+      for_each: "{{ device_ids }}"
       sequence:
-        - service: "{{ repeat.item }}"
+        - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
           data:
             title: "{{ titre }}"
             message: "{{ message }}"
