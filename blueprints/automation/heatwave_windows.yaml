@@ -42,18 +42,18 @@ blueprint:
           min: 1
           max: 60
           unit_of_measurement: minutes
-    boolean_fenetres:
+    select_fenetres:
       name: Indicateur état fenêtres / Window state indicator
       description: >
-        (Optionnel) input_boolean mis à jour à chaque déclenchement : on = ouvrir, off = fermer.
+        (Optionnel) input_select mis à jour à chaque déclenchement. Doit avoir les options "Ouvrir" et "Fermer".
         Permet d'afficher l'état sur le dashboard et de conserver un historique.
 
-        (Optional) input_boolean updated on each trigger: on = open, off = close.
+        (Optional) input_select updated on each trigger. Must have options "Ouvrir" and "Fermer".
         Useful to display state on dashboard and keep history.
       default: ""
       selector:
         entity:
-          domain: input_boolean
+          domain: input_select
     langue:
       name: Langue / Language
       default: "fr"
@@ -96,7 +96,7 @@ action:
       capteurs_ext: !input capteurs_exterieurs
       capteurs_int: !input capteurs_interieurs
       langue: !input langue
-      boolean_fenetres: !input boolean_fenetres
+      select_fenetres: !input select_fenetres
       entities_raw: !input entities_notification
   - variables:
       temp_max_ext: >
@@ -123,11 +123,13 @@ action:
         {% endif %}
   - if:
       - condition: template
-        value_template: "{{ boolean_fenetres != '' }}"
+        value_template: "{{ select_fenetres != '' }}"
     then:
-      - service: "input_boolean.turn_{{ 'on' if trigger_id == 'ouvrir' else 'off' }}"
+      - service: input_select.select_option
         target:
-          entity_id: "{{ boolean_fenetres }}"
+          entity_id: "{{ select_fenetres }}"
+        data:
+          option: "{{ 'Ouvrir' if trigger_id == 'ouvrir' else 'Fermer' }}"
   - repeat:
       for_each: "{{ device_ids }}"
       sequence:
