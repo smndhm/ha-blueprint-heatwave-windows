@@ -63,10 +63,10 @@ blueprint:
 trigger:
   - platform: template
     value_template: >
-      {% set ext = expand(capteurs_exterieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
-      {% set int = expand(capteurs_interieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
-      {% if ext | length > 0 and int | length > 0 %}
-        {{ ext | max < int | min }}
+      {% set temps_ext = expand(capteurs_exterieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
+      {% set temps_int = expand(capteurs_interieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
+      {% if temps_ext | length > 0 and temps_int | length > 0 %}
+        {{ temps_ext | max < temps_int | min }}
       {% else %}
         false
       {% endif %}
@@ -75,10 +75,10 @@ trigger:
     id: ouvrir
   - platform: template
     value_template: >
-      {% set ext = expand(capteurs_exterieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
-      {% set int = expand(capteurs_interieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
-      {% if ext | length > 0 and int | length > 0 %}
-        {{ ext | max > int | min }}
+      {% set temps_ext = expand(capteurs_exterieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
+      {% set temps_int = expand(capteurs_interieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
+      {% if temps_ext | length > 0 and temps_int | length > 0 %}
+        {{ temps_ext | max > temps_int | min }}
       {% else %}
         false
       {% endif %}
@@ -90,10 +90,26 @@ action:
   - variables:
       langue: !input langue
       boolean_fenetres: !input boolean_fenetres
+      temps_ext: >
+        {{ expand(capteurs_exterieurs) | map(attribute='state') | map('float', none) | reject('none') | list }}
+      temps_int: >
+        {{ expand(capteurs_interieurs) | map(attribute='state') | map('float', none) | reject('none') | list }}
+      temp_max_ext: "{{ temps_ext | max | round(1) }}"
+      temp_min_int: "{{ temps_int | min | round(1) }}"
       titre_ouvrir: "{% if langue == 'fr' %}🪟 Ouvrez les fenêtres !{% else %}🪟 Open the windows!{% endif %}"
-      message_ouvrir: "{% if langue == 'fr' %}Il fait plus frais dehors, c'est le moment de ventiler !{% else %}It's cooler outside, time to ventilate!{% endif %}"
+      message_ouvrir: >
+        {% if langue == 'fr' %}
+          Il fait plus frais dehors (max {{ temp_max_ext }}°C) que dedans (min {{ temp_min_int }}°C). C'est le moment de ventiler !
+        {% else %}
+          It's cooler outside (max {{ temp_max_ext }}°C) than inside (min {{ temp_min_int }}°C). Time to ventilate!
+        {% endif %}
       titre_fermer: "{% if langue == 'fr' %}🪟 Fermez les fenêtres !{% else %}🪟 Close the windows!{% endif %}"
-      message_fermer: "{% if langue == 'fr' %}Il fait plus chaud dehors, fermez pour garder la fraîcheur !{% else %}It's warmer outside, close to keep the cool air in!{% endif %}"
+      message_fermer: >
+        {% if langue == 'fr' %}
+          Il fait plus chaud dehors (max {{ temp_max_ext }}°C) que dedans (min {{ temp_min_int }}°C). Fermez pour garder la fraîcheur !
+        {% else %}
+          It's warmer outside (max {{ temp_max_ext }}°C) than inside (min {{ temp_min_int }}°C). Close to keep the cool air in!
+        {% endif %}
   - variables:
       devices: !input devices_notification
       titre: >
