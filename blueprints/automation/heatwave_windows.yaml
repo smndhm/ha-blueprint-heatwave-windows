@@ -22,11 +22,12 @@ blueprint:
         entity:
           multiple: true
           device_class: temperature
-    services_notification:
-      name: Service(s) de notification / Notification service(s)
-      description: Sélectionne un ou plusieurs services de notification / Select one or more notification services
+    devices_notification:
+      name: Appareils à notifier / Devices to notify
+      description: Sélectionne un ou plusieurs appareils mobiles (companion app) / Select one or more mobile devices (companion app)
       selector:
-        notify:
+        device:
+          integration: mobile_app
           multiple: true
     delai_minutes:
       name: Délai / Delay (minutes)
@@ -81,15 +82,15 @@ action:
       titre_fermer: "{% if langue == 'fr' %}🪟 Fermez les fenêtres !{% else %}🪟 Close the windows!{% endif %}"
       message_fermer: "{% if langue == 'fr' %}Il fait plus chaud dehors, fermez pour garder la fraîcheur !{% else %}It's warmer outside, close to keep the cool air in!{% endif %}"
   - variables:
-      services: !input services_notification
+      devices: !input devices_notification
       titre: >
         {% if trigger.id == 'ouvrir' %}{{ titre_ouvrir }}{% else %}{{ titre_fermer }}{% endif %}
       message: >
         {% if trigger.id == 'ouvrir' %}{{ message_ouvrir }}{% else %}{{ message_fermer }}{% endif %}
   - repeat:
-      for_each: "{{ services if services is list else [services] }}"
+      for_each: "{{ devices if devices is list else [devices] }}"
       sequence:
-        - service: "notify.{{ repeat.item }}"
+        - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
           data:
             title: "{{ titre }}"
             message: "{{ message }}"
