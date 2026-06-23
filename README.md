@@ -43,7 +43,7 @@ Cliquez sur le badge en haut de cette page / Click the badge at the top of this 
 |-----------|-------------|--------|
 | **Capteurs extérieurs** | Un ou plusieurs capteurs `device_class: temperature` en extérieur | — |
 | **Capteurs intérieurs** | Un ou plusieurs capteurs `device_class: temperature` en intérieur | — |
-| **Service de notification** | Service à appeler, ex: `notify.mobile_app_mon_telephone` | — |
+| **Service(s) de notification** | Un ou plusieurs services de notification (autocomplétion disponible) | — |
 | **Délai** | Durée (en minutes) pendant laquelle la condition doit être vraie avant déclenchement | 10 min |
 | **Langue** | Langue des notifications : Français ou English | `fr` |
 
