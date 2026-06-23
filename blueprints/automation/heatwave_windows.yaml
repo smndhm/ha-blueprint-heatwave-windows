@@ -42,18 +42,18 @@ blueprint:
           min: 1
           max: 60
           unit_of_measurement: minutes
-    select_fenetres:
+    texte_fenetres:
       name: Indicateur état fenêtres / Window state indicator
       description: >
-        (Optionnel) input_select mis à jour à chaque déclenchement. Doit avoir les options "Ouvrir" et "Fermer".
+        (Optionnel) input_text mis à jour à chaque déclenchement : "À ouvrir" ou "À fermer".
         Permet d'afficher l'état sur le dashboard et de conserver un historique.
 
-        (Optional) input_select updated on each trigger. Must have options "Ouvrir" and "Fermer".
+        (Optional) input_text updated on each trigger: "À ouvrir" or "À fermer".
         Useful to display state on dashboard and keep history.
       default: ""
       selector:
         entity:
-          domain: input_select
+          domain: input_text
     langue:
       name: Langue / Language
       default: "fr"
@@ -96,7 +96,7 @@ action:
       capteurs_ext: !input capteurs_exterieurs
       capteurs_int: !input capteurs_interieurs
       langue: !input langue
-      select_fenetres: !input select_fenetres
+      texte_fenetres: !input texte_fenetres
       entities_raw: !input entities_notification
   - variables:
       temp_max_ext: >
@@ -123,13 +123,18 @@ action:
         {% endif %}
   - if:
       - condition: template
-        value_template: "{{ select_fenetres != '' }}"
+        value_template: "{{ texte_fenetres != '' }}"
     then:
-      - service: input_select.select_option
+      - service: input_text.set_value
         target:
-          entity_id: "{{ select_fenetres }}"
+          entity_id: "{{ texte_fenetres }}"
         data:
-          option: "{{ 'Ouvrir' if trigger_id == 'ouvrir' else 'Fermer' }}"
+          value: >
+            {% if trigger_id == 'ouvrir' %}
+              {% if langue == 'fr' %}À ouvrir{% else %}Open{% endif %}
+            {% else %}
+              {% if langue == 'fr' %}À fermer{% else %}Close{% endif %}
+            {% endif %}
   - repeat:
       for_each: "{{ device_ids }}"
       sequence:
