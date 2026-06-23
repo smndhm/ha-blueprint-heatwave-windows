@@ -42,18 +42,6 @@ blueprint:
           min: 1
           max: 60
           unit_of_measurement: minutes
-    texte_fenetres:
-      name: Indicateur état fenêtres / Window state indicator
-      description: >
-        (Optionnel) input_text mis à jour à chaque déclenchement : "À ouvrir" ou "À fermer".
-        Permet d'afficher l'état sur le dashboard et de conserver un historique.
-
-        (Optional) input_text updated on each trigger: "À ouvrir" or "À fermer".
-        Useful to display state on dashboard and keep history.
-      default: ""
-      selector:
-        entity:
-          domain: input_text
     langue:
       name: Langue / Language
       default: "fr"
@@ -96,7 +84,6 @@ action:
       capteurs_ext: !input capteurs_exterieurs
       capteurs_int: !input capteurs_interieurs
       langue: !input langue
-      texte_fenetres: !input texte_fenetres
       services_raw: !input services_notification
   - variables:
       temp_max_ext: >
@@ -121,20 +108,6 @@ action:
         {% else %}
           {% if langue == 'fr' %}Il fait plus chaud dehors (max {{ temp_max_ext }}°C) que dedans (min {{ temp_min_int }}°C). Fermez pour garder la fraîcheur !{% else %}It's warmer outside (max {{ temp_max_ext }}°C) than inside (min {{ temp_min_int }}°C). Close to keep the cool air in!{% endif %}
         {% endif %}
-  - if:
-      - condition: template
-        value_template: "{{ texte_fenetres != '' }}"
-    then:
-      - service: input_text.set_value
-        target:
-          entity_id: "{{ texte_fenetres }}"
-        data:
-          value: >
-            {% if trigger_id == 'ouvrir' %}
-              {% if langue == 'fr' %}À ouvrir{% else %}Open{% endif %}
-            {% else %}
-              {% if langue == 'fr' %}À fermer{% else %}Close{% endif %}
-            {% endif %}
   - repeat:
       for_each: "{{ services }}"
       sequence:
