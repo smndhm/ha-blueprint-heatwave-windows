@@ -22,13 +22,16 @@ blueprint:
         entity:
           multiple: true
           device_class: temperature
-    devices_notification:
-      name: Appareils à notifier / Devices to notify
-      description: Sélectionne un ou plusieurs appareils mobiles (companion app) / Select one or more mobile devices (companion app)
+    services_notification:
+      name: Service(s) de notification / Notification service(s)
+      description: >
+        Service(s) de notification séparés par des virgules.
+        Ex : notify.mobile_app_pixel_7, notify.mobile_app_iphone_de_marie
+
+        Comma-separated notification services.
+        E.g.: notify.mobile_app_pixel_7, notify.mobile_app_iphone_de_marie
       selector:
-        device:
-          integration: mobile_app
-          multiple: true
+        text:
     delai_minutes:
       name: Délai / Delay (minutes)
       default: 10
@@ -111,7 +114,8 @@ action:
           It's warmer outside (max {{ temp_max_ext }}°C) than inside (min {{ temp_min_int }}°C). Close to keep the cool air in!
         {% endif %}
   - variables:
-      devices: !input devices_notification
+      services_raw: !input services_notification
+      services: "{{ services_raw.split(',') | map('trim') | list }}"
       titre: >
         {% if trigger.id == 'ouvrir' %}{{ titre_ouvrir }}{% else %}{{ titre_fermer }}{% endif %}
       message: >
@@ -124,9 +128,9 @@ action:
         target:
           entity_id: "{{ boolean_fenetres }}"
   - repeat:
-      for_each: "{{ devices if devices is list else [devices] }}"
+      for_each: "{{ services }}"
       sequence:
-        - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+        - service: "{{ repeat.item }}"
           data:
             title: "{{ titre }}"
             message: "{{ message }}"
