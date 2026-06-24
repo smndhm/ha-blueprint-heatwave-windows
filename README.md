@@ -44,9 +44,12 @@ Cliquez sur le badge en haut de cette page / Click the badge at the top of this 
 | **Capteurs extérieurs** | Un ou plusieurs capteurs `device_class: temperature` en extérieur | — |
 | **Capteurs intérieurs** | Un ou plusieurs capteurs `device_class: temperature` en intérieur | — |
 | **Appareils à notifier** | Un ou plusieurs appareils avec la companion app HA (autocomplétion) | — |
-| **Indicateur état fenêtres** | `input_boolean` mis à jour à chaque déclenchement (on = ouvrir, off = fermer) — utile pour le dashboard et l'historique | *(optionnel)* |
 | **Délai** | Durée (en minutes) pendant laquelle la condition doit être vraie avant déclenchement | 10 min |
 | **Langue** | Langue des notifications : Français ou English | `fr` |
+
+Pour un indicateur d'état visuel (Ouvrir/Fermer) avec historique sur un dashboard, voir [docs/dashboard.md](docs/dashboard.md) — aucun helper requis.
+
+For a visual state indicator (Open/Close) with dashboard history, see [docs/dashboard.md](docs/dashboard.md) — no helper required.
 
 ---
 
