@@ -58,10 +58,16 @@ YAML editor for this specific field).
 ## 2. État des fenêtres / Window state sensor
 
 Toujours dans `configuration.yaml`, un capteur template calcule Ouvrir/Fermer
-en reproduisant la même comparaison que le blueprint — sans créer de helper :
+en reproduisant la même comparaison que le blueprint — sans créer de helper.
+Il est "sticky" : pendant les périodes ambiguës (températures intérieures et
+extérieures qui se chevauchent), il garde sa dernière valeur connue au lieu
+de passer à `unknown`/`unavailable` :
 
 Still in `configuration.yaml`, a template sensor computes Open/Close by
-mirroring the same comparison as the blueprint — without creating a helper:
+mirroring the same comparison as the blueprint — without creating a helper.
+It's "sticky": during ambiguous periods (overlapping indoor/outdoor
+temperature ranges), it keeps its last known value instead of flipping to
+`unknown`/`unavailable`:
 
 ```yaml
 template:
@@ -69,38 +75,51 @@ template:
       - name: "Fenêtres"
         unique_id: etat_fenetres
         icon: >
-          {% if this.state == 'Ouvrir' %}
+          {% if states('sensor.fenetres') == 'Ouvrir' %}
             mdi:window-open-variant
-          {% elif this.state == 'Fermer' %}
-            mdi:window-closed-variant
           {% else %}
-            mdi:help-circle-outline
+            mdi:window-closed-variant
           {% endif %}
         state: >
           {% set ext = expand('group.capteurs_exterieurs') | map(attribute='state') | map('float', none) | reject('none') | list %}
           {% set int = expand('group.capteurs_interieurs') | map(attribute='state') | map('float', none) | reject('none') | list %}
+          {% set precedent = states('sensor.fenetres') %}
           {% if ext | length > 0 and int | length > 0 %}
             {% if ext | max < int | min %}
               Ouvrir
             {% elif ext | min > int | max %}
               Fermer
             {% else %}
-              unknown
+              {{ precedent if precedent not in ['unknown', 'unavailable'] else 'Fermer' }}
             {% endif %}
           {% else %}
-            unknown
+            {{ precedent if precedent not in ['unknown', 'unavailable'] else 'Fermer' }}
           {% endif %}
 ```
 
-⚠️ Ce capteur réagit instantanément aux températures, alors que la
-notification du blueprint attend le délai configuré (`délai_minutes`, 10 min
-par défaut) avant de se déclencher. L'historique peut donc varier légèrement
-de la notification réelle.
+`states('sensor.fenetres')` relit la propre valeur actuelle du capteur (par
+son `entity_id`) plutôt que la variable `this`, pour rester compatible avec
+toutes les versions de Home Assistant. Au tout premier calcul (aucune valeur
+précédente), la valeur par défaut est `Fermer` — changez-la si vous préférez
+`Ouvrir`.
 
-⚠️ This sensor reacts instantly to temperatures, while the blueprint's
-notification waits for the configured delay (`délai_minutes`, 10 min by
-default) before triggering. The history may therefore differ slightly from
-the actual notification.
+`states('sensor.fenetres')` reads the sensor's own current value (via its
+`entity_id`) instead of the `this` variable, to stay compatible with all
+Home Assistant versions. On the very first computation (no previous value
+yet), the default is `Fermer` (Close) — change it if you prefer `Ouvrir`
+(Open).
+
+⚠️ Ce capteur réagit instantanément aux températures, contrairement à la
+notification du blueprint qui attend le délai configuré (`délai_minutes`,
+10 min par défaut) avant de se déclencher. L'historique peut donc varier
+légèrement de la notification réelle (le capteur peut changer d'état sans
+qu'une notification soit envoyée).
+
+⚠️ This sensor reacts instantly to temperatures, unlike the blueprint's
+notification which waits for the configured delay (`délai_minutes`, 10 min
+by default) before triggering. The history may therefore differ slightly
+from the actual notification (the sensor can change state without a
+notification being sent).
 
 ---
 
