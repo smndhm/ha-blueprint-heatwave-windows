@@ -1,16 +1,15 @@
 # Dashboard avec historique / Dashboard with history
 
 Ce guide explique comment recréer un dashboard affichant l'historique des
-températures min/max et l'état des fenêtres (Ouvrir/Fermer), sans écrire de
-template Jinja ni dupliquer la liste de vos capteurs.
+températures min/max, sans écrire de template Jinja ni dupliquer la liste
+de vos capteurs.
 
 This guide shows how to recreate a dashboard displaying min/max temperature
-history and the window state (Open/Close), without writing Jinja templates
-or duplicating your sensor list.
+history, without writing Jinja templates or duplicating your sensor list.
 
 ---
 
-## 1. Créer les 4 capteurs agrégés / Create the 4 aggregated sensors
+## Créer les 4 capteurs agrégés / Create the 4 aggregated sensors
 
 **Réglages → Appareils et services → Aides → Créer une aide → Groupe → Capteur**
 *(Settings → Devices & services → Helpers → Create helper → Group → Sensor)*
@@ -35,34 +34,11 @@ in the blueprint if you also want to unify the source on the automation side.
 
 ---
 
-## 2. Créer l'indicateur d'état des fenêtres / Create the window state indicator
-
-**Réglages → Appareils et services → Aides → Créer une aide → Liste déroulante**
-*(Settings → Devices & services → Helpers → Create helper → Dropdown)*
-
-- Nom / Name : `Fenêtres`
-- Options : `Ouvrir`, `Fermer`
-
-Puis, en configurant le blueprint, sélectionnez ce nouvel `input_select` dans
-le champ **Indicateur état fenêtres**. L'automation le mettra à jour à chaque
-déclenchement, ce qui crée automatiquement un historique consultable.
-
-Then, when configuring the blueprint, select this new `input_select` in the
-**Window state indicator** field. The automation will update it on every
-trigger, which automatically builds a browsable history.
-
----
-
-## 3. Carte dashboard / Dashboard card
+## Carte dashboard / Dashboard card
 
 ```yaml
 type: vertical-stack
 cards:
-  - type: history-graph
-    title: Fenêtres
-    hours_to_show: 24
-    entities:
-      - entity: input_select.fenetres
   - type: history-graph
     title: Température max extérieure
     entities:

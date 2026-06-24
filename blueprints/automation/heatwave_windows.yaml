@@ -49,18 +49,6 @@ blueprint:
               value: "fr"
             - label: English
               value: "en"
-    select_fenetres:
-      name: Indicateur état fenêtres / Window state indicator
-      description: >
-        (Optionnel) input_select mis à jour à chaque déclenchement. Doit avoir les options "Ouvrir" et "Fermer".
-        Permet d'afficher l'état sur le dashboard et de conserver un historique.
-
-        (Optional) input_select updated on each trigger. Must have the options "Ouvrir" and "Fermer".
-        Useful to display state on dashboard and keep history.
-      default: ""
-      selector:
-        entity:
-          domain: input_select
 
 trigger:
   - platform: template
@@ -94,7 +82,6 @@ action:
       capteurs_int: !input capteurs_interieurs
       langue: !input langue
       devices_raw: !input devices_notification
-      select_fenetres: !input select_fenetres
   - variables:
       temp_max_ext: >
         {% set vals = expand(capteurs_ext) | map(attribute='state') | map('float', none) | reject('none') | list %}
@@ -124,15 +111,6 @@ action:
         {% else %}
           {% if langue == 'fr' %}Il fait plus chaud dehors (min {{ temp_min_ext }}°C) que dedans (max {{ temp_max_int }}°C). Fermez pour garder la fraîcheur !{% else %}It's warmer outside (min {{ temp_min_ext }}°C) than inside (max {{ temp_max_int }}°C). Close to keep the cool air in!{% endif %}
         {% endif %}
-  - if:
-      - condition: template
-        value_template: "{{ select_fenetres != '' }}"
-    then:
-      - service: input_select.select_option
-        target:
-          entity_id: "{{ select_fenetres }}"
-        data:
-          option: "{{ 'Ouvrir' if trigger_id == 'ouvrir' else 'Fermer' }}"
   - repeat:
       for_each: "{{ device_ids }}"
       sequence:
