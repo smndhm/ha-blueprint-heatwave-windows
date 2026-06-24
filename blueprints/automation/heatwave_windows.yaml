@@ -68,7 +68,7 @@ trigger:
       {% set temps_ext = expand(capteurs_exterieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
       {% set temps_int = expand(capteurs_interieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
       {% if temps_ext | length > 0 and temps_int | length > 0 %}
-        {{ temps_ext | max > temps_int | min }}
+        {{ temps_ext | min > temps_int | max }}
       {% else %}
         false
       {% endif %}
@@ -86,9 +86,15 @@ action:
       temp_max_ext: >
         {% set vals = expand(capteurs_ext) | map(attribute='state') | map('float', none) | reject('none') | list %}
         {{ vals | max | round(1) if vals | length > 0 else '?' }}
+      temp_min_ext: >
+        {% set vals = expand(capteurs_ext) | map(attribute='state') | map('float', none) | reject('none') | list %}
+        {{ vals | min | round(1) if vals | length > 0 else '?' }}
       temp_min_int: >
         {% set vals = expand(capteurs_int) | map(attribute='state') | map('float', none) | reject('none') | list %}
         {{ vals | min | round(1) if vals | length > 0 else '?' }}
+      temp_max_int: >
+        {% set vals = expand(capteurs_int) | map(attribute='state') | map('float', none) | reject('none') | list %}
+        {{ vals | max | round(1) if vals | length > 0 else '?' }}
       devices_list: "{{ devices_raw if devices_raw is list else [devices_raw] }}"
       trigger_id: "{{ trigger.id | default('') }}"
   - variables:
@@ -103,7 +109,7 @@ action:
         {% if trigger_id == 'ouvrir' %}
           {% if langue == 'fr' %}Il fait plus frais dehors (max {{ temp_max_ext }}°C) que dedans (min {{ temp_min_int }}°C). C'est le moment de ventiler !{% else %}It's cooler outside (max {{ temp_max_ext }}°C) than inside (min {{ temp_min_int }}°C). Time to ventilate!{% endif %}
         {% else %}
-          {% if langue == 'fr' %}Il fait plus chaud dehors (max {{ temp_max_ext }}°C) que dedans (min {{ temp_min_int }}°C). Fermez pour garder la fraîcheur !{% else %}It's warmer outside (max {{ temp_max_ext }}°C) than inside (min {{ temp_min_int }}°C). Close to keep the cool air in!{% endif %}
+          {% if langue == 'fr' %}Il fait plus chaud dehors (min {{ temp_min_ext }}°C) que dedans (max {{ temp_max_int }}°C). Fermez pour garder la fraîcheur !{% else %}It's warmer outside (min {{ temp_min_ext }}°C) than inside (max {{ temp_max_int }}°C). Close to keep the cool air in!{% endif %}
         {% endif %}
   - repeat:
       for_each: "{{ device_ids }}"
