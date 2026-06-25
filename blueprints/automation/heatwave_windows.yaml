@@ -98,15 +98,28 @@ action:
       devices_list: "{{ devices_raw if devices_raw is list else [devices_raw] }}"
       trigger_id: "{{ trigger.id | default('') }}"
   - variables:
+      decision: >
+        {% if trigger_id in ['ouvrir', 'fermer'] %}
+          {{ trigger_id }}
+        {% else %}
+          {% set temps_ext = expand(capteurs_ext) | map(attribute='state') | map('float', none) | reject('none') | list %}
+          {% set temps_int = expand(capteurs_int) | map(attribute='state') | map('float', none) | reject('none') | list %}
+          {% if temps_ext | length > 0 and temps_int | length > 0 and temps_ext | max < temps_int | min %}
+            ouvrir
+          {% else %}
+            fermer
+          {% endif %}
+        {% endif %}
+  - variables:
       device_ids: "{{ devices_list | select('string') | unique | list }}"
       titre: >
-        {% if trigger_id == 'ouvrir' %}
+        {% if decision == 'ouvrir' %}
           {% if langue == 'fr' %}🪟 Ouvrez les fenêtres !{% else %}🪟 Open the windows!{% endif %}
         {% else %}
           {% if langue == 'fr' %}🪟 Fermez les fenêtres !{% else %}🪟 Close the windows!{% endif %}
         {% endif %}
       message: >
-        {% if trigger_id == 'ouvrir' %}
+        {% if decision == 'ouvrir' %}
           {% if langue == 'fr' %}Il fait plus frais dehors (max {{ temp_max_ext }}°C) que dedans (min {{ temp_min_int }}°C). C'est le moment de ventiler !{% else %}It's cooler outside (max {{ temp_max_ext }}°C) than inside (min {{ temp_min_int }}°C). Time to ventilate!{% endif %}
         {% else %}
           {% if langue == 'fr' %}Il fait plus chaud dehors (min {{ temp_min_ext }}°C) que dedans (max {{ temp_max_int }}°C). Fermez pour garder la fraîcheur !{% else %}It's warmer outside (min {{ temp_min_ext }}°C) than inside (max {{ temp_max_int }}°C). Close to keep the cool air in!{% endif %}
