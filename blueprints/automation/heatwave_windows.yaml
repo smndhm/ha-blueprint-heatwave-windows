@@ -50,6 +50,10 @@ blueprint:
             - label: English
               value: "en"
 
+variables:
+  capteurs_exterieurs: !input capteurs_exterieurs
+  capteurs_interieurs: !input capteurs_interieurs
+
 trigger:
   - platform: template
     value_template: >
