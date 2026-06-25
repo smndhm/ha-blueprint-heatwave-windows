@@ -72,7 +72,7 @@ trigger:
       {% set temps_ext = expand(capteurs_exterieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
       {% set temps_int = expand(capteurs_interieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
       {% if temps_ext | length > 0 and temps_int | length > 0 %}
-        {{ temps_ext | min > temps_int | max }}
+        {{ temps_ext | max > temps_int | min }}
       {% else %}
         false
       {% endif %}

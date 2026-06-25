@@ -87,7 +87,7 @@ template:
           {% if ext | length > 0 and int | length > 0 %}
             {% if ext | max < int | min %}
               Ouvrir
-            {% elif ext | min > int | max %}
+            {% elif ext | max > int | min %}
               Fermer
             {% else %}
               {{ precedent if precedent not in ['unknown', 'unavailable'] else 'Fermer' }}
