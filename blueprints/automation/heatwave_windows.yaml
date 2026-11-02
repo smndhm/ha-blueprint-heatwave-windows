@@ -57,7 +57,7 @@ blueprint:
 
         The automation only triggers if the outdoor max temperature exceeds this threshold.
         Useful to keep the logic dormant in winter when it is naturally cooler outside.
-      default: 20
+      default: 15
       selector:
         number:
           min: 0
