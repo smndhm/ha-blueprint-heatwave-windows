@@ -49,17 +49,32 @@ blueprint:
               value: "fr"
             - label: English
               value: "en"
+    seuil_actif:
+      name: Seuil d'activation / Activation threshold (°C)
+      description: >
+        L'automation ne se déclenche que si la température extérieure max dépasse ce seuil.
+        Utile pour désactiver la logique en hiver quand il fait naturellement plus frais dehors.
+
+        The automation only triggers if the outdoor max temperature exceeds this threshold.
+        Useful to keep the logic dormant in winter when it is naturally cooler outside.
+      default: 20
+      selector:
+        number:
+          min: 0
+          max: 35
+          unit_of_measurement: "°C"
 
 trigger_variables:
   capteurs_exterieurs: !input capteurs_exterieurs
   capteurs_interieurs: !input capteurs_interieurs
+  seuil_actif: !input seuil_actif
 
 trigger:
   - platform: template
     value_template: >
       {% set temps_ext = expand(capteurs_exterieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
       {% set temps_int = expand(capteurs_interieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
-      {% if temps_ext | length > 0 and temps_int | length > 0 %}
+      {% if temps_ext | length > 0 and temps_int | length > 0 and temps_ext | max > seuil_actif %}
         {{ temps_ext | max < temps_int | min }}
       {% else %}
         false
@@ -71,7 +86,7 @@ trigger:
     value_template: >
       {% set temps_ext = expand(capteurs_exterieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
       {% set temps_int = expand(capteurs_interieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
-      {% if temps_ext | length > 0 and temps_int | length > 0 %}
+      {% if temps_ext | length > 0 and temps_int | length > 0 and temps_ext | max > seuil_actif %}
         {{ temps_ext | max > temps_int | min }}
       {% else %}
         false
