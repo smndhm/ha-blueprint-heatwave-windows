@@ -50,19 +50,20 @@ blueprint:
             - label: English
               value: "en"
     seuil_actif:
-      name: Seuil d'activation / Activation threshold (°C)
+      name: Seuil d'activation / Activation threshold
       description: >
         L'automation ne se déclenche que si la température extérieure max dépasse ce seuil.
-        Utile pour désactiver la logique en hiver quand il fait naturellement plus frais dehors.
+        Entrez la valeur dans la même unité que vos capteurs (°C ou °F).
+        Défaut : 15°C / 59°F.
 
         The automation only triggers if the outdoor max temperature exceeds this threshold.
-        Useful to keep the logic dormant in winter when it is naturally cooler outside.
+        Enter the value in the same unit as your sensors (°C or °F).
+        Default: 15°C / 59°F.
       default: 15
       selector:
         number:
-          min: 0
-          max: 35
-          unit_of_measurement: "°C"
+          min: -20
+          max: 100
 
 trigger_variables:
   capteurs_exterieurs: !input capteurs_exterieurs
