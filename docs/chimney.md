@@ -22,9 +22,9 @@ or use a single sensor directly as source.
 
 ## Capteur de dérivée / Derivative sensor
 
-Dans `configuration.yaml` :
+Dans `configuration.yaml`, au **niveau racine** (pas dans un bloc `template:`) :
 
-In `configuration.yaml`:
+In `configuration.yaml`, at the **root level** (not inside a `template:` block):
 
 ```yaml
 sensor:
@@ -36,6 +36,14 @@ sensor:
     time_window: "00:30:00"
     round: 2
 ```
+
+⚠️ `platform: derivative` est une **plateforme de capteur** distincte, pas un capteur
+template. Elle ne peut pas être placée dans un bloc `template: - sensor:`. Elle doit
+avoir sa propre clé `sensor:` au niveau racine.
+
+⚠️ `platform: derivative` is a separate **sensor platform**, not a template sensor.
+It cannot be nested inside a `template: - sensor:` block. It must have its own root-level
+`sensor:` key.
 
 - **`source`** : le capteur de température intérieure à suivre — idéalement
   `sensor.temperature_min_interieure` (la plus froide) si vous l'avez créé,
