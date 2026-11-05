@@ -1,0 +1,175 @@
+blueprint:
+  name: "Allumage Cheminée / Chimney Heating"
+  description: >
+    Envoie une notification pour allumer la cheminée en anticipant le refroidissement
+    intérieur, en tenant compte du temps de chauffe de la cheminée.
+
+    Sends a notification to light the fireplace by anticipating indoor cooling,
+    accounting for the fireplace warm-up time.
+  domain: automation
+  input:
+    capteurs_interieurs:
+      name: Capteurs intérieurs / Indoor sensors
+      description: Capteurs de température intérieure / Indoor temperature sensors
+      selector:
+        entity:
+          multiple: true
+          device_class: temperature
+    capteur_derivee:
+      name: Capteur de vitesse de refroidissement / Cooling rate sensor
+      description: >
+        Capteur de dérivée de la température intérieure (°C/h ou °F/h).
+        Voir docs/chimney.md pour le configurer.
+
+        Derivative sensor for indoor temperature (°C/h or °F/h).
+        See docs/chimney.md to set it up.
+      selector:
+        entity:
+          domain: sensor
+    capteurs_exterieurs:
+      name: Capteurs extérieurs / Outdoor sensors
+      description: >
+        Capteurs de température extérieure. L'automation ne se déclenche
+        que si la température extérieure est sous le seuil configuré.
+
+        Outdoor temperature sensors. The automation only triggers
+        if the outdoor temperature is below the configured threshold.
+      selector:
+        entity:
+          multiple: true
+          device_class: temperature
+    devices_notification:
+      name: Appareils à notifier / Devices to notify
+      description: >
+        Sélectionne un ou plusieurs appareils mobiles (companion app HA).
+        Select one or more mobile devices (HA companion app).
+      selector:
+        device:
+          integration: mobile_app
+          multiple: true
+    temp_confort:
+      name: Température de confort / Comfort temperature
+      description: >
+        Température intérieure minimale souhaitée. L'automation anticipe
+        pour ne pas passer en dessous.
+
+        Minimum desired indoor temperature. The automation anticipates
+        to avoid dropping below this value.
+      default: 19
+      selector:
+        number:
+          min: 10
+          max: 30
+    temps_chauffe:
+      name: Temps de chauffe / Warm-up time (minutes)
+      description: >
+        Temps nécessaire pour que la cheminée commence à chauffer efficacement.
+        L'automation déclenche la notification avec cette avance.
+
+        Time for the fireplace to start heating effectively.
+        The automation triggers the notification this far in advance.
+      default: 45
+      selector:
+        number:
+          min: 5
+          max: 180
+          unit_of_measurement: minutes
+    seuil_ext:
+      name: Seuil extérieur / Outdoor threshold
+      description: >
+        L'automation ne se déclenche que si la température extérieure max
+        est en dessous de ce seuil. Entrez la valeur dans la même unité
+        que vos capteurs (°C ou °F). Défaut : 15°C / 59°F.
+
+        The automation only triggers if the outdoor max temperature is
+        below this threshold. Enter the value in the same unit as your
+        sensors (°C or °F). Default: 15°C / 59°F.
+      default: 15
+      selector:
+        number:
+          min: -20
+          max: 100
+    langue:
+      name: Langue / Language
+      default: "fr"
+      selector:
+        select:
+          options:
+            - label: Français
+              value: "fr"
+            - label: English
+              value: "en"
+
+trigger_variables:
+  capteurs_interieurs: !input capteurs_interieurs
+  capteurs_exterieurs: !input capteurs_exterieurs
+  capteur_derivee: !input capteur_derivee
+  temp_confort: !input temp_confort
+  temps_chauffe: !input temps_chauffe
+  seuil_ext: !input seuil_ext
+
+trigger:
+  - platform: template
+    value_template: >
+      {% set temps_int = expand(capteurs_interieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
+      {% set temps_ext = expand(capteurs_exterieurs) | map(attribute='state') | map('float', none) | reject('none') | list %}
+      {% set rate = states(capteur_derivee) | float(none) %}
+      {% set warmup_h = temps_chauffe / 60 %}
+      {% if temps_int | length > 0 and temps_ext | length > 0 and rate is not none %}
+        {% set temp_min_int = temps_int | min %}
+        {% set temp_max_ext = temps_ext | max %}
+        {% if temp_max_ext < seuil_ext and temp_min_int > temp_confort and rate < 0 %}
+          {{ (temp_min_int - temp_confort) / (-rate) <= warmup_h }}
+        {% else %}
+          false
+        {% endif %}
+      {% else %}
+        false
+      {% endif %}
+    for:
+      minutes: 5
+    id: allumer
+
+action:
+  - variables:
+      capteurs_int: !input capteurs_interieurs
+      capteurs_ext: !input capteurs_exterieurs
+      capteur_der: !input capteur_derivee
+      langue: !input langue
+      devices_raw: !input devices_notification
+      temp_cible: !input temp_confort
+      chauffe_min: !input temps_chauffe
+  - variables:
+      temp_min_int: >
+        {% set vals = expand(capteurs_int) | map(attribute='state') | map('float', none) | reject('none') | list %}
+        {{ vals | min | round(1) if vals | length > 0 else '?' }}
+      temp_max_ext: >
+        {% set vals = expand(capteurs_ext) | map(attribute='state') | map('float', none) | reject('none') | list %}
+        {{ vals | max | round(1) if vals | length > 0 else '?' }}
+      rate: "{{ states(capteur_der) | float(0) | round(2) }}"
+      devices_list: "{{ devices_raw if devices_raw is list else [devices_raw] }}"
+  - variables:
+      device_ids: "{{ devices_list | select('string') | unique | list }}"
+      temps_restant: >
+        {% set r = states(capteur_der) | float(0) %}
+        {% set t = temp_min_int | float(0) %}
+        {% if r < 0 %}
+          {{ ((t - temp_cible) / (-r) * 60) | round(0) | int }}
+        {% else %}
+          0
+        {% endif %}
+      titre: >
+        {% if langue == 'fr' %}🔥 Allumez la cheminée !{% else %}🔥 Light the fireplace!{% endif %}
+      message: >
+        {% if langue == 'fr' %}
+          Il fait {{ temp_min_int }}° dedans et ça refroidit à {{ rate }}°/h. À ce rythme, il reste environ {{ temps_restant }} min avant d'atteindre {{ temp_cible }}° — allumez maintenant pour anticiper les {{ chauffe_min }} min de chauffe.
+        {% else %}
+          Indoor temperature is {{ temp_min_int }}° and dropping at {{ rate }}°/h. At this rate, about {{ temps_restant }} min remain before reaching {{ temp_cible }}° — light it now to account for the {{ chauffe_min }} min warm-up.
+        {% endif %}
+  - repeat:
+      for_each: "{{ device_ids }}"
+      sequence:
+        - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+          data:
+            title: "{{ titre }}"
+            message: "{{ message }}"
