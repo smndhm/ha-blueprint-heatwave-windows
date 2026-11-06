@@ -77,15 +77,14 @@ blueprint:
     delai_rappel:
       name: Délai de rappel / Reminder delay (minutes)
       description: >
-        Si la situation persiste (température toujours critique), renvoie une
-        notification toutes les X minutes. Mettez 0 pour désactiver les rappels.
+        Délai d'attente avant le rappel quand vous appuyez sur "Rappelle-moi"
+        dans la notification.
 
-        If the situation persists (temperature still critical), sends another
-        notification every X minutes. Set to 0 to disable reminders.
-      default: 30
+        Delay before the reminder when you tap "Remind me" in the notification.
+      default: 15
       selector:
         number:
-          min: 0
+          min: 5
           max: 120
           unit_of_measurement: minutes
     seuil_ext:
@@ -205,36 +204,31 @@ action:
               actions:
                 - action: CHEMINEE_ALLUMEE
                   title: "🔥 C'est allumé !"
-  - condition: template
-    value_template: "{{ rappel_min | int > 0 }}"
+                - action: CHEMINEE_RAPPEL
+                  title: "⏰ Rappelle-moi"
   - repeat:
-      while:
-        - condition: template
-          value_template: >
-            {% set temps_int = expand(capteurs_int) | map(attribute='state') | map('float', none) | reject('none') | list %}
-            {% set temps_ext = expand(capteurs_ext) | map(attribute='state') | map('float', none) | reject('none') | list %}
-            {% set r = states(capteur_der) | float(none) %}
-            {% if temps_int | length > 0 and temps_ext | length > 0 and r is not none %}
-              {% set temp_min = temps_int | min %}
-              {% set temp_max = temps_ext | max %}
-              {{ temp_max < seuil and r < 0 and (temp_min <= temp_cible or (temp_min - temp_cible) / (-r) * 60 <= chauffe_min) }}
-            {% else %}
-              false
-            {% endif %}
+      count: 20
       sequence:
         - wait_for_trigger:
             - platform: event
               event_type: mobile_app_notification_action
               event_data:
                 action: CHEMINEE_ALLUMEE
+            - platform: event
+              event_type: mobile_app_notification_action
+              event_data:
+                action: CHEMINEE_RAPPEL
           timeout:
-            minutes: "{{ rappel_min }}"
-          continue_on_timeout: true
+            hours: 4
+          continue_on_timeout: false
         - if:
             - condition: template
-              value_template: "{{ wait.trigger is not none }}"
+              value_template: >
+                {{ wait.trigger is none or wait.trigger.event.data.action == 'CHEMINEE_ALLUMEE' }}
           then:
-            - stop: "Cheminée allumée, arrêt des rappels"
+            - stop: "Terminé"
+        - delay:
+            minutes: "{{ rappel_min }}"
         - variables:
             temp_min_int: >
               {% set vals = expand(capteurs_int) | map(attribute='state') | map('float', none) | reject('none') | list %}
@@ -280,3 +274,5 @@ action:
                     actions:
                       - action: CHEMINEE_ALLUMEE
                         title: "🔥 C'est allumé !"
+                      - action: CHEMINEE_RAPPEL
+                        title: "⏰ Rappelle-moi"
