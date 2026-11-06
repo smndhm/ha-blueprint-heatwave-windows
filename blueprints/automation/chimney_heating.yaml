@@ -165,13 +165,13 @@ action:
         {% set t = temp_min_int | float(0) %}
         {% if langue == 'fr' %}
           {% if t <= temp_cible %}
-            Il fait {{ temp_min_int }}° dedans (déjà sous {{ temp_cible }}°) et ça refroidit à {{ rate }}°/h — allumez la cheminée maintenant !
+            Il fait {{ temp_min_int }}° dedans, vous êtes déjà sous {{ temp_cible }}° et ça refroidit à {{ rate }}°/h — il est grand temps d'allumer la cheminée !
           {% else %}
             Il fait {{ temp_min_int }}° dedans et ça refroidit à {{ rate }}°/h. À ce rythme, il reste environ {{ temps_restant }} min avant d'atteindre {{ temp_cible }}° — allumez maintenant pour anticiper les {{ chauffe_min }} min de chauffe.
           {% endif %}
         {% else %}
           {% if t <= temp_cible %}
-            Indoor temperature is {{ temp_min_int }}° (already below {{ temp_cible }}°) and dropping at {{ rate }}°/h — light the fireplace now!
+            Indoor temperature is {{ temp_min_int }}°, already below {{ temp_cible }}° and dropping at {{ rate }}°/h — it's high time to light the fireplace!
           {% else %}
             Indoor temperature is {{ temp_min_int }}° and dropping at {{ rate }}°/h. At this rate, about {{ temps_restant }} min remain before reaching {{ temp_cible }}° — light it now to account for the {{ chauffe_min }} min warm-up.
           {% endif %}
