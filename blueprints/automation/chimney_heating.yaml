@@ -74,6 +74,20 @@ blueprint:
           min: 5
           max: 180
           unit_of_measurement: minutes
+    delai_rappel:
+      name: Délai de rappel / Reminder delay (minutes)
+      description: >
+        Si la situation persiste (température toujours critique), renvoie une
+        notification toutes les X minutes. Mettez 0 pour désactiver les rappels.
+
+        If the situation persists (temperature still critical), sends another
+        notification every X minutes. Set to 0 to disable reminders.
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 120
+          unit_of_measurement: minutes
     seuil_ext:
       name: Seuil extérieur / Outdoor threshold
       description: >
@@ -130,6 +144,8 @@ trigger:
       minutes: 5
     id: allumer
 
+mode: restart
+
 action:
   - variables:
       capteurs_int: !input capteurs_interieurs
@@ -139,47 +155,72 @@ action:
       devices_raw: !input devices_notification
       temp_cible: !input temp_confort
       chauffe_min: !input temps_chauffe
+      seuil: !input seuil_ext
+      rappel_min: !input delai_rappel
   - variables:
-      temp_min_int: >
-        {% set vals = expand(capteurs_int) | map(attribute='state') | map('float', none) | reject('none') | list %}
-        {{ vals | min | round(1) if vals | length > 0 else '?' }}
-      temp_max_ext: >
-        {% set vals = expand(capteurs_ext) | map(attribute='state') | map('float', none) | reject('none') | list %}
-        {{ vals | max | round(1) if vals | length > 0 else '?' }}
-      rate: "{{ states(capteur_der) | float(0) | round(2) }}"
       devices_list: "{{ devices_raw if devices_raw is list else [devices_raw] }}"
-  - variables:
       device_ids: "{{ devices_list | select('string') | unique | list }}"
-      temps_restant: >
-        {% set r = states(capteur_der) | float(0) %}
-        {% set t = temp_min_int | float(0) %}
-        {% if r < 0 and t > temp_cible %}
-          {{ ((t - temp_cible) / (-r) * 60) | round(0) | int }}
-        {% else %}
-          0
-        {% endif %}
-      titre: >
-        {% if langue == 'fr' %}🔥 Allumez la cheminée !{% else %}🔥 Light the fireplace!{% endif %}
-      message: >
-        {% set r = states(capteur_der) | float(0) %}
-        {% set t = temp_min_int | float(0) %}
-        {% if langue == 'fr' %}
-          {% if t <= temp_cible %}
-            Il fait {{ temp_min_int }}° dedans, vous êtes déjà sous {{ temp_cible }}° et ça refroidit à {{ rate }}°/h — il est grand temps d'allumer la cheminée !
-          {% else %}
-            Il fait {{ temp_min_int }}° dedans et ça refroidit à {{ rate }}°/h. À ce rythme, il reste environ {{ temps_restant }} min avant d'atteindre {{ temp_cible }}° — allumez maintenant pour anticiper les {{ chauffe_min }} min de chauffe.
-          {% endif %}
-        {% else %}
-          {% if t <= temp_cible %}
-            Indoor temperature is {{ temp_min_int }}°, already below {{ temp_cible }}° and dropping at {{ rate }}°/h — it's high time to light the fireplace!
-          {% else %}
-            Indoor temperature is {{ temp_min_int }}° and dropping at {{ rate }}°/h. At this rate, about {{ temps_restant }} min remain before reaching {{ temp_cible }}° — light it now to account for the {{ chauffe_min }} min warm-up.
-          {% endif %}
-        {% endif %}
   - repeat:
-      for_each: "{{ device_ids }}"
+      while:
+        - condition: template
+          value_template: >
+            {% set temps_int = expand(capteurs_int) | map(attribute='state') | map('float', none) | reject('none') | list %}
+            {% set temps_ext = expand(capteurs_ext) | map(attribute='state') | map('float', none) | reject('none') | list %}
+            {% set r = states(capteur_der) | float(none) %}
+            {% if temps_int | length > 0 and temps_ext | length > 0 and r is not none %}
+              {% set temp_min = temps_int | min %}
+              {% set temp_max = temps_ext | max %}
+              {{ temp_max < seuil and r < 0 and (temp_min <= temp_cible or (temp_min - temp_cible) / (-r) * 60 <= chauffe_min) }}
+            {% else %}
+              false
+            {% endif %}
       sequence:
-        - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
-          data:
-            title: "{{ titre }}"
-            message: "{{ message }}"
+        - variables:
+            temp_min_int: >
+              {% set vals = expand(capteurs_int) | map(attribute='state') | map('float', none) | reject('none') | list %}
+              {{ vals | min | round(1) if vals | length > 0 else '?' }}
+            temp_max_ext: >
+              {% set vals = expand(capteurs_ext) | map(attribute='state') | map('float', none) | reject('none') | list %}
+              {{ vals | max | round(1) if vals | length > 0 else '?' }}
+            rate: "{{ states(capteur_der) | float(0) | round(2) }}"
+        - variables:
+            temps_restant: >
+              {% set r = states(capteur_der) | float(0) %}
+              {% set t = temp_min_int | float(0) %}
+              {% if r < 0 and t > temp_cible %}
+                {{ ((t - temp_cible) / (-r) * 60) | round(0) | int }}
+              {% else %}
+                0
+              {% endif %}
+            titre: >
+              {% if langue == 'fr' %}🔥 Allumez la cheminée !{% else %}🔥 Light the fireplace!{% endif %}
+            message: >
+              {% set t = temp_min_int | float(0) %}
+              {% if langue == 'fr' %}
+                {% if t <= temp_cible %}
+                  Il fait {{ temp_min_int }}° dedans. Vous êtes passé sous {{ temp_cible }}° et ça continue de refroidir à {{ rate }}°/h. Il est temps d'allumer la cheminée.
+                {% else %}
+                  Il fait {{ temp_min_int }}° dedans. Ça refroidit à {{ rate }}°/h, soit encore {{ temps_restant }} min avant {{ temp_cible }}°. Allumez maintenant pour anticiper les {{ chauffe_min }} min de chauffe.
+                {% endif %}
+              {% else %}
+                {% if t <= temp_cible %}
+                  Indoor temperature is {{ temp_min_int }}°. You've dropped below {{ temp_cible }}° and it's still cooling at {{ rate }}°/h. Time to light the fireplace.
+                {% else %}
+                  Indoor temperature is {{ temp_min_int }}°. Dropping at {{ rate }}°/h, about {{ temps_restant }} min before reaching {{ temp_cible }}°. Light it now to account for the {{ chauffe_min }} min warm-up.
+                {% endif %}
+              {% endif %}
+        - repeat:
+            for_each: "{{ device_ids }}"
+            sequence:
+              - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                data:
+                  title: "{{ titre }}"
+                  message: "{{ message }}"
+        - if:
+            - condition: template
+              value_template: "{{ rappel_min | int > 0 }}"
+          then:
+            - delay:
+                minutes: "{{ rappel_min }}"
+          else:
+            - stop: "Rappels désactivés / Reminders disabled"
