@@ -153,7 +153,7 @@ action:
       temps_restant: >
         {% set r = states(capteur_der) | float(0) %}
         {% set t = temp_min_int | float(0) %}
-        {% if r < 0 %}
+        {% if r < 0 and t > temp_cible %}
           {{ ((t - temp_cible) / (-r) * 60) | round(0) | int }}
         {% else %}
           0
@@ -161,10 +161,20 @@ action:
       titre: >
         {% if langue == 'fr' %}🔥 Allumez la cheminée !{% else %}🔥 Light the fireplace!{% endif %}
       message: >
+        {% set r = states(capteur_der) | float(0) %}
+        {% set t = temp_min_int | float(0) %}
         {% if langue == 'fr' %}
-          Il fait {{ temp_min_int }}° dedans et ça refroidit à {{ rate }}°/h. À ce rythme, il reste environ {{ temps_restant }} min avant d'atteindre {{ temp_cible }}° — allumez maintenant pour anticiper les {{ chauffe_min }} min de chauffe.
+          {% if t <= temp_cible %}
+            Il fait {{ temp_min_int }}° dedans (déjà sous {{ temp_cible }}°) et ça refroidit à {{ rate }}°/h — allumez la cheminée maintenant !
+          {% else %}
+            Il fait {{ temp_min_int }}° dedans et ça refroidit à {{ rate }}°/h. À ce rythme, il reste environ {{ temps_restant }} min avant d'atteindre {{ temp_cible }}° — allumez maintenant pour anticiper les {{ chauffe_min }} min de chauffe.
+          {% endif %}
         {% else %}
-          Indoor temperature is {{ temp_min_int }}° and dropping at {{ rate }}°/h. At this rate, about {{ temps_restant }} min remain before reaching {{ temp_cible }}° — light it now to account for the {{ chauffe_min }} min warm-up.
+          {% if t <= temp_cible %}
+            Indoor temperature is {{ temp_min_int }}° (already below {{ temp_cible }}°) and dropping at {{ rate }}°/h — light the fireplace now!
+          {% else %}
+            Indoor temperature is {{ temp_min_int }}° and dropping at {{ rate }}°/h. At this rate, about {{ temps_restant }} min remain before reaching {{ temp_cible }}° — light it now to account for the {{ chauffe_min }} min warm-up.
+          {% endif %}
         {% endif %}
   - repeat:
       for_each: "{{ device_ids }}"
