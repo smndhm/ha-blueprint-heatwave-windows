@@ -201,6 +201,10 @@ action:
           data:
             title: "{{ titre }}"
             message: "{{ message }}"
+            data:
+              actions:
+                - action: CHEMINEE_ALLUMEE
+                  title: "🔥 C'est allumé !"
   - condition: template
     value_template: "{{ rappel_min | int > 0 }}"
   - repeat:
@@ -218,8 +222,19 @@ action:
               false
             {% endif %}
       sequence:
-        - delay:
+        - wait_for_trigger:
+            - platform: event
+              event_type: mobile_app_notification_action
+              event_data:
+                action: CHEMINEE_ALLUMEE
+          timeout:
             minutes: "{{ rappel_min }}"
+          continue_on_timeout: true
+        - if:
+            - condition: template
+              value_template: "{{ wait.trigger is not none }}"
+          then:
+            - stop: "Cheminée allumée, arrêt des rappels"
         - variables:
             temp_min_int: >
               {% set vals = expand(capteurs_int) | map(attribute='state') | map('float', none) | reject('none') | list %}
@@ -261,3 +276,7 @@ action:
                 data:
                   title: "{{ titre }}"
                   message: "{{ message }}"
+                  data:
+                    actions:
+                      - action: CHEMINEE_ALLUMEE
+                        title: "🔥 C'est allumé !"
